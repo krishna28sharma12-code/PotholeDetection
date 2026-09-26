@@ -2,6 +2,7 @@ import os
 import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
+from fastapi.responses import RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
@@ -59,3 +60,7 @@ async def health_check():
     Uptime/warm-up check
     """
     return {"status": "ok"}
+
+@app.get("/")
+async def root():
+    return RedirectResponse(url="/dashboard")
