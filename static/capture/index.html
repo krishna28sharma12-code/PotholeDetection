@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Pothole Capture</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-color: #0f172a;
+      --card-bg: rgba(30, 41, 59, 0.7);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #3b82f6;
+      --accent-hover: #2563eb;
+      --danger: #ef4444;
+      --danger-hover: #dc2626;
+      --success: #10b981;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    header {
+      padding: 20px;
+      text-align: center;
+      background: linear-gradient(180deg, rgba(15, 23, 42, 1) 0%, rgba(15, 23, 42, 0) 100%);
+      z-index: 10;
+    }
+
+    header h1 {
+      font-size: 1.5rem;
+      font-weight: 800;
+      letter-spacing: -0.05em;
+      background: linear-gradient(to right, #60a5fa, #a78bfa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 20px;
+      position: relative;
+    }
+
+    .video-container {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      z-index: 0;
+      overflow: hidden;
+      background-color: #000;
+    }
+
+    video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      opacity: 0.6;
+    }
+
+    .overlay {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      justify-content: flex-end;
+      gap: 20px;
+      padding-bottom: 20px;
+    }
+
+    .stats-card {
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 20px;
+      padding: 20px;
+      display: flex;
+      justify-content: space-around;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+    }
+
+    .stat {
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 2.5rem;
+      font-weight: 800;
+      margin-bottom: 5px;
+    }
+
+    .stat-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+    }
+
+    .sent-value { color: var(--text-main); }
+    .detected-value { color: var(--success); }
+
+    .controls {
+      display: flex;
+      justify-content: center;
+    }
+
+    button {
+      font-family: 'Inter', sans-serif;
+      font-size: 1.1rem;
+      font-weight: 600;
+      padding: 16px 40px;
+      border: none;
+      border-radius: 9999px;
+      color: white;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+      width: 100%;
+      max-width: 300px;
+    }
+
+    button:active {
+      transform: scale(0.96);
+    }
+
+    .btn-start {
+      background: var(--accent);
+      box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+    }
+
+    .btn-start:hover {
+      background: var(--accent-hover);
+    }
+
+    .btn-stop {
+      background: var(--danger);
+      box-shadow: 0 0 20px rgba(239, 68, 68, 0.5);
+      display: none;
+    }
+
+    .btn-stop:hover {
+      background: var(--danger-hover);
+    }
+
+    .message-banner {
+      background: rgba(239, 68, 68, 0.9);
+      color: white;
+      padding: 12px;
+      border-radius: 12px;
+      font-size: 0.875rem;
+      text-align: center;
+      margin-top: 10px;
+      display: none;
+    }
+
+    canvas {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="video-container">
+    <video id="cameraFeed" autoplay playsinline muted></video>
+  </div>
+
+  <header>
+    <h1>Pothole Capture</h1>
+  </header>
+
+  <main>
+    <div class="overlay">
+      
+      <div id="errorMessage" class="message-banner"></div>
+
+      <div class="stats-card">
+        <div class="stat">
+          <div class="stat-value sent-value" id="sentCount">0</div>
+          <div class="stat-label">Sent</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value detected-value" id="detectedCount">0</div>
+          <div class="stat-label">Detected</div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button id="startBtn" class="btn-start">Start Session</button>
+        <button id="stopBtn" class="btn-stop">Stop Capture</button>
+      </div>
+
+    </div>
+  </main>
+
+  <canvas id="snapshotCanvas"></canvas>
+
+  <script>
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const cameraFeed = document.getElementById('cameraFeed');
+    const snapshotCanvas = document.getElementById('snapshotCanvas');
+    const sentCountEl = document.getElementById('sentCount');
+    const detectedCountEl = document.getElementById('detectedCount');
+    const errorMessage = document.getElementById('errorMessage');
+
+    let captureInterval = null;
+    let sentCount = 0;
+    let detectedCount = 0;
+    let stream = null;
+    let currentPosition = null;
+    let watchId = null;
+    
+    // Config
+    const CAPTURE_CADENCE_MS = 2000;
+    const API_URL = '/api/upload_frame';
+
+    function showError(msg) {
+      errorMessage.textContent = msg;
+      errorMessage.style.display = 'block';
+    }
+
+    function hideError() {
+      errorMessage.style.display = 'none';
+    }
+
+    async function initCamera() {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
+          audio: false
+        });
+        cameraFeed.srcObject = stream;
+        return true;
+      } catch (err) {
+        console.error("Camera access denied:", err);
+        showError("Camera permission denied or unavailable. Cannot start session.");
+        return false;
+      }
+    }
+
+    function initGPS() {
+      return new Promise((resolve) => {
+        if (!navigator.geolocation) {
+          showError("Geolocation is not supported by this browser.");
+          resolve(false);
+          return;
+        }
+
+        watchId = navigator.geolocation.watchPosition(
+          (pos) => {
+            currentPosition = pos.coords;
+            resolve(true);
+          },
+          (err) => {
+            console.error("GPS access denied or failed:", err);
+            showError("GPS permission denied or unavailable. Cannot start session.");
+            resolve(false);
+          },
+          { enableHighAccuracy: true, maximumAge: 0 }
+        );
+      });
+    }
+
+    function stopSensors() {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        stream = null;
+      }
+      if (watchId !== null) {
+        navigator.geolocation.clearWatch(watchId);
+        watchId = null;
+      }
+    }
+
+    async function captureAndSend() {
+      if (!currentPosition || !stream) return;
+
+      // 1. Grab frame from video
+      const ctx = snapshotCanvas.getContext('2d');
+      snapshotCanvas.width = cameraFeed.videoWidth;
+      snapshotCanvas.height = cameraFeed.videoHeight;
+      ctx.drawImage(cameraFeed, 0, 0, snapshotCanvas.width, snapshotCanvas.height);
+
+      // 2. Convert to Blob
+      snapshotCanvas.toBlob(async (blob) => {
+        if (!blob) return;
+
+        sentCount++;
+        sentCountEl.textContent = sentCount;
+
+        const formData = new FormData();
+        formData.append('image', blob, 'frame.jpg');
+        formData.append('lat', currentPosition.latitude.toFixed(6));
+        formData.append('lon', currentPosition.longitude.toFixed(6));
+        formData.append('captured_at', new Date().toISOString());
+
+        try {
+          // Use absolute path if testing from a different domain, else relative
+          const response = await fetch(API_URL, {
+            method: 'POST',
+            body: formData
+          });
+          
+          if (!response.ok) throw new Error('API returned ' + response.status);
+          
+          const data = await response.json();
+          if (data.detected) {
+            detectedCount++;
+            detectedCountEl.textContent = detectedCount;
+            // Optionally flash screen or provide feedback for detection
+            triggerDetectionFeedback();
+          }
+        } catch (error) {
+          console.error("Upload failed:", error);
+          // Don't halt the loop for one failed upload, just log it.
+        }
+      }, 'image/jpeg', 0.8);
+    }
+
+    function triggerDetectionFeedback() {
+      const card = document.querySelector('.stats-card');
+      card.style.borderColor = 'var(--success)';
+      card.style.boxShadow = '0 0 30px rgba(16, 185, 129, 0.5)';
+      setTimeout(() => {
+        card.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+        card.style.boxShadow = '0 20px 40px rgba(0, 0, 0, 0.4)';
+      }, 500);
+    }
+
+    async function startSession() {
+      hideError();
+      startBtn.disabled = true;
+      startBtn.textContent = 'Initializing...';
+
+      const hasCamera = await initCamera();
+      if (!hasCamera) {
+        startBtn.disabled = false;
+        startBtn.textContent = 'Start Session';
+        return;
+      }
+
+      const hasGPS = await initGPS();
+      if (!hasGPS) {
+        stopSensors();
+        startBtn.disabled = false;
+        startBtn.textContent = 'Start Session';
+        return;
+      }
+
+      // Switch buttons
+      startBtn.style.display = 'none';
+      stopBtn.style.display = 'block';
+      startBtn.disabled = false;
+      startBtn.textContent = 'Start Session';
+
+      // Reset counters
+      sentCount = 0;
+      detectedCount = 0;
+      sentCountEl.textContent = sentCount;
+      detectedCountEl.textContent = detectedCount;
+
+      // Start loop
+      captureInterval = setInterval(captureAndSend, CAPTURE_CADENCE_MS);
+      // Fire first frame immediately
+      captureAndSend();
+    }
+
+    function stopSession() {
+      if (captureInterval) {
+        clearInterval(captureInterval);
+        captureInterval = null;
+      }
+      stopSensors();
+      
+      // Switch buttons
+      stopBtn.style.display = 'none';
+      startBtn.style.display = 'block';
+      cameraFeed.srcObject = null;
+    }
+
+    startBtn.addEventListener('click', startSession);
+    stopBtn.addEventListener('click', stopSession);
+
+  </script>
+</body>
+</html>

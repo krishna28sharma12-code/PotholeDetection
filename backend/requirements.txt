@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+python-dotenv
+python-multipart
+# Database driver
+asyncpg
+# To make requests to Roboflow
+httpx
+# To draw bounding boxes locally
+Pillow
